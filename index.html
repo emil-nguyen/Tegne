@@ -256,7 +256,7 @@ stage.addEventListener('pointermove',e=>{
     const [a,b]=[...ptr.entries()],o=a[0]===e.pointerId?b[1]:a[1],
       d0=Math.hypot(p.x-o.x,p.y-o.y),d1=Math.hypot(e.clientX-o.x,e.clientY-o.y),
       a0=Math.atan2(p.y-o.y,p.x-o.x),a1=Math.atan2(e.clientY-o.y,e.clientX-o.x);
-    if(d0>0)st.s*=d1/d0;st.r+=(a1-a0)*st.flip;st.x+=(e.clientX-p.x)/2;st.y+=(e.clientY-p.y)/2}
+    if(d0>0)st.s*=d1/d0;st.r+=(a1-a0);st.x+=(e.clientX-p.x)/2;st.y+=(e.clientY-p.y)/2}
   ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});apply()});
 stage.addEventListener('wheel',e=>{if(locked)return;e.preventDefault();st.s*=e.deltaY<0?1.06:.94;apply()},{passive:false});
 </script>
