@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#F4EDE1" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#17100C" media="(prefers-color-scheme: dark)">
 <title>Tegnehjælp</title>
-<link rel="apple-touch-icon" href="icon.png?v=2">
+<link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
 <meta name="apple-mobile-web-app-title" content="Tegne">
 <style>
@@ -281,27 +281,37 @@ $('back').onclick=()=>$('start').style.display='none';
 $('recb').onclick=toggleRec;
 $('pjb').onclick=()=>setPj(true);$('pjx').onclick=()=>setPj(false);
 $('inv').onclick=()=>{inv=!inv;flag('inv',inv);look()};
-function hold(id,fn){const b=$(id);let t;const go=()=>{fn();apply()};
-  b.onpointerdown=e=>{e.preventDefault();go();t=setInterval(go,70)};
-  ['pointerup','pointerleave','pointercancel'].forEach(n=>b.addEventListener(n,()=>clearInterval(t)))}
+function hold(id,fn){const b=$(id);let t=null;
+  const stop=()=>{clearInterval(t);t=null};
+  const go=()=>{if(document.hidden){stop();return}fn();apply()};
+  b.onpointerdown=e=>{e.preventDefault();stop();go();t=setInterval(go,70)};
+  ['pointerup','pointercancel','pointerleave','lostpointercapture'].forEach(n=>b.addEventListener(n,stop));
+  ['pointerup','pointercancel','touchend','touchcancel','blur','contextmenu'].forEach(n=>window.addEventListener(n,stop));
+  document.addEventListener('visibilitychange',stop)}
 hold('nl',()=>st.x-=2);hold('nr',()=>st.x+=2);hold('nu',()=>st.y-=2);hold('nd',()=>st.y+=2);
-hold('rl',()=>st.r-=.0035);hold('rr',()=>st.r+=.0035);hold('sm',()=>st.s/=1.005);hold('sp',()=>st.s*=1.005);
+hold('rl',()=>st.r-=.0035);hold('rr',()=>st.r+=.0035);hold('sm',()=>st.s=Math.max(.02,st.s/1.005));hold('sp',()=>st.s=Math.min(30,st.s*1.005));
 
 // ---- Berøring: ét finger flytter, to fingre flytter, zoomer og drejer ----
 const ptr=new Map();
-stage.addEventListener('pointerdown',e=>{ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});stage.setPointerCapture(e.pointerId)});
-['pointerup','pointercancel'].forEach(n=>stage.addEventListener(n,e=>ptr.delete(e.pointerId)));
+stage.addEventListener('pointerdown',e=>{if(ptr.size>=2)ptr.clear();ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});stage.setPointerCapture(e.pointerId)});
+['pointerup','pointercancel'].forEach(n=>window.addEventListener(n,e=>ptr.delete(e.pointerId)));
+['touchend','touchcancel'].forEach(n=>window.addEventListener(n,e=>{if(!e.touches.length)ptr.clear()}));
+window.addEventListener('blur',()=>ptr.clear());
+document.addEventListener('visibilitychange',()=>ptr.clear());
+stage.addEventListener('lostpointercapture',e=>ptr.delete(e.pointerId));
 stage.addEventListener('pointermove',e=>{
   if(locked||!ptr.has(e.pointerId))return;
   const p=ptr.get(e.pointerId);
   if(ptr.size===1){st.x+=e.clientX-p.x;st.y+=e.clientY-p.y}
   else if(ptr.size===2){
     const [a,b]=[...ptr.entries()],o=a[0]===e.pointerId?b[1]:a[1],
-      d0=Math.hypot(p.x-o.x,p.y-o.y),d1=Math.hypot(e.clientX-o.x,e.clientY-o.y),
-      a0=Math.atan2(p.y-o.y,p.x-o.x),a1=Math.atan2(e.clientY-o.y,e.clientX-o.x);
-    if(d0>0)st.s*=d1/d0;st.r+=(a1-a0);st.x+=(e.clientX-p.x)/2;st.y+=(e.clientY-p.y)/2}
+      d0=Math.hypot(p.x-o.x,p.y-o.y),d1=Math.hypot(e.clientX-o.x,e.clientY-o.y);
+    let da=Math.atan2(e.clientY-o.y,e.clientX-o.x)-Math.atan2(p.y-o.y,p.x-o.x);
+    if(da>Math.PI)da-=2*Math.PI;if(da<-Math.PI)da+=2*Math.PI;
+    if(d0>20){st.s=Math.min(30,Math.max(.02,st.s*d1/d0));st.r+=da}
+    st.x+=(e.clientX-p.x)/2;st.y+=(e.clientY-p.y)/2}
   ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});apply()});
-stage.addEventListener('wheel',e=>{if(locked)return;e.preventDefault();st.s*=e.deltaY<0?1.06:.94;apply()},{passive:false});
+stage.addEventListener('wheel',e=>{if(locked)return;e.preventDefault();st.s=Math.min(30,Math.max(.02,st.s*(e.deltaY<0?1.06:.94)));apply()},{passive:false});
 </script>
 </body>
 </html>
